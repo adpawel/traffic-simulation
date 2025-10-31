@@ -1,6 +1,6 @@
 # Predykcja Ruchu Samochodów (Data-Driven NaSch Model) 
 
-Projekt implementuje model automatów komórkowych Nagela-Schreckenberga (NaSch), kalibrowany na danych z drona **ExiD**, z dynamiczną wizualizacją w **Pygame**.
+Projekt implementuje model automatów komórkowych Nagela-Schreckenberga (NaSch), kalibrowany na danych z drona **ExiD**, z dynamiczną wizualizacją w **Pygame** / **SUMO**.
 
 ## 1. Wymagania i Struktura Projektu
 
