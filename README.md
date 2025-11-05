@@ -13,7 +13,7 @@ Projekt implementuje model automatów komórkowych Nagela-Schreckenberga (NaSch)
 
 ### B. Struktura Katalogów
 
-Umieść wypakowany zbiór ExiD w katalogu /data, aby umożliwić pomyślne ładowanie danych:
+Umieść wypakowany zbiór ExiD w katalogu `./data` (wewnątrz katalogu projektu), aby umożliwić pomyślne ładowanie danych:
 
 ```
 /katalog_projektu
@@ -27,6 +27,21 @@ Umieść wypakowany zbiór ExiD w katalogu /data, aby umożliwić pomyślne ład
 
 ```
 
+Uwaga: w tej repozytorium prawidłowa struktura danych to podkatalog `./data/data` — czyli wewnątrz katalogu projektu znajduje się folder `data`, a w nim drugi folder `data` zawierający pliki ExiD. Przykładowe pliki, które powinny się tam znaleźć (po jednym zestawie na nagranie):
+
+```
+00_background.png
+00_recordingMeta.csv
+00_tracks.csv
+00_tracksMeta.csv
+01_background.png
+01_recordingMeta.csv
+01_tracks.csv
+01_tracksMeta.csv
+...
+```
+
+
 ----------
 
 ## 2. Instrukcja Uruchomienia
@@ -38,14 +53,16 @@ Postępuj zgodnie z poniższymi krokami, aby skonfigurować środowisko i urucho
 1.  Otwórz terminal w katalogu głównym projektu.
     
 2.  Utwórz i aktywuj środowisko korzystając z pliku `environment.yml`:
-    
-`conda env create -f environment.yml`
-`conda activate nasch`
+
+```bash
+conda env create -f environment.yml
+conda activate nasch
+```
 
 ### Krok 2.2: Uruchomienie Symulacji
 
 Uruchom plik główny `main.py`. Program automatycznie załaduje i zagreguje dane ExiD w celu kalibracji, a następnie uruchomi dynamiczną wizualizację.
-`python main.py`
+`python main.py` na Windows lub `python3 main.py` na Linux/Mac.
 
 ### Oczekiwane Działanie
 
