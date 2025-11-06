@@ -208,15 +208,71 @@ def run_pygame_simulation(initial_density, v_max, p, steps_per_second=10):
     font = pygame.font.Font(None, 24)
     
     running = True
+    paused = False
     total_steps = 0
+
+    center_x = SCREEN_WIDTH // 2
+    center_y = SCREEN_HEIGHT // 2
+
+    button_font = pygame.font.Font(None, 30)
+    buttons = {
+        "slower": pygame.Rect(center_x - 50, SCREEN_HEIGHT - 30, 20, 20),
+        "faster": pygame.Rect(center_x + 50, SCREEN_HEIGHT - 30, 20, 20),
+        "pause": pygame.Rect(center_x + 100, SCREEN_HEIGHT - 30, 20, 20),        
+    }
+
+    def draw_icon(name, rect):
+        cx, cy = rect.center
+        if name == "slower":
+            pygame.draw.polygon(screen, (255, 255, 255), [
+                (cx + 6, cy - 10), (cx - 8, cy), (cx + 6, cy + 10)                
+            ])
+        elif name == "faster":
+            pygame.draw.polygon(screen, (255, 255, 255), [
+                (cx - 6, cy - 10), (cx + 8, cy), (cx - 6, cy + 10)
+            ])
+        elif name == "pause":
+            pygame.draw.rect(screen, (255, 255, 255), (cx - 8, cy - 10, 5, 20))
+            pygame.draw.rect(screen, (255, 255, 255), (cx + 3, cy - 10, 5, 20))
+
+    def draw_buttons():
+        for name, rect in buttons.items():
+            pygame.draw.rect(screen, (80, 80, 80), rect, border_radius=8)
+            draw_icon(name, rect)
+
+        text_font = pygame.font.Font(None, 20) 
+        text_surface = font.render(f"{steps_per_second}", True, (255, 255, 255)) 
+        screen.blit(text_surface, (center_x, SCREEN_HEIGHT - 30))
     
     while running:
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 running = False
-        
-        road, flow_count = step(road, v_max, p)
-        total_steps += 1
+
+            # zmiana prędkości animacji za pomocą przycisków na ekranie
+            elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+                mx, my = event.pos
+                if buttons["slower"].collidepoint(mx, my):
+                    steps_per_second = max(steps_per_second - 2, 1)
+                elif buttons["faster"].collidepoint(mx, my):
+                    steps_per_second = min(steps_per_second + 2, 120)
+                elif buttons["pause"].collidepoint(mx, my):
+                    paused = not paused
+
+            # zmiana prędkości animacji za pomocą strzałek góra, dół i spacja    
+            elif event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_UP:
+                    steps_per_second = min(steps_per_second + 2, 120)
+                elif event.key == pygame.K_DOWN:
+                    steps_per_second = max(steps_per_second - 2, 1)
+                elif event.key == pygame.K_SPACE:
+                    paused = not paused
+
+        if not paused:
+            road, flow_count = step(road, v_max, p)
+            total_steps += 1
+        else:
+            flow_count = 0
         
         screen.fill(BG_COLOR)
         pygame.draw.rect(screen, ROAD_COLOR, (25, 50, ROAD_WIDTH, ROAD_HEIGHT))
@@ -235,6 +291,8 @@ def run_pygame_simulation(initial_density, v_max, p, steps_per_second=10):
                 color = get_car_color(v, v_max)
                 pygame.draw.rect(screen, color, (x_pos + 1, y_pos + 1, CELL_SIZE - 2, ROAD_HEIGHT - 2))
                 
+        draw_buttons()
+
         pygame.display.flip()
         clock.tick(steps_per_second)
     pygame.quit()
