@@ -1,10 +1,9 @@
 import pandas as pd
 import numpy as np
-
+import os
 
 CELL_LENGTH_M = 7.5
 TIME_STEP_S = 1.0
-
 
 def load_and_aggregate_exid(data_dir, rec_ids):
     """
@@ -20,6 +19,7 @@ def load_and_aggregate_exid(data_dir, rec_ids):
             tracks = pd.read_csv(tracks_path, low_memory=False)
             tracks_meta = pd.read_csv(meta_path, low_memory=False)
 
+            # tracks = tracks[tracks['xVelocity'] > 0]
             required_meta_cols = ['trackId', 'class', 'width'] 
             available_meta_cols = [col for col in required_meta_cols if col in tracks_meta.columns]
             
@@ -45,18 +45,33 @@ def load_and_aggregate_exid(data_dir, rec_ids):
     return pd.concat(all_tracks, ignore_index=True), None
 
 
-def extract_nasch_parameters(tracks_df, recording_meta):
-    tracks_df['v_NaSch'] = (tracks_df['speed_m_s'] * TIME_STEP_S) / CELL_LENGTH_M
-    
-    v_max_95 = tracks_df['v_NaSch'].quantile(0.95)
-    V_MAX_EMPIRICAL = int(np.ceil(v_max_95))
-    
-    P_EMPIRICAL = 0.15
+def read_nasch_params(filename):
+    """
+    Odczytuje parametry V_MAX_NASCH_FINAL i P_FINAL z pliku CSV.
+    """
+    if not os.path.exists(filename):
+        print(f"Błąd: Plik kalibracyjny '{filename}' nie został znaleziony.")
+        # Zwracanie domyślnych wartości w razie błędu
+        return 10, 0.2
 
-    return V_MAX_EMPIRICAL, P_EMPIRICAL     
-    
-
-def calibrate_from_exid(data_dir, rec_ids):
-    df, _ = load_and_aggregate_exid(data_dir, rec_ids)
-    v_max, p = extract_nasch_parameters(df, None)
-    return v_max, p
+    try:
+        df = pd.read_csv(filename)
+        
+        # Używamy metody .set_index() i .loc[] do wygodnego odczytu wartości
+        df = df.set_index('Parameter')
+        
+        # Wartość V_MAX musi być liczbą całkowitą
+        v_max = int(df.loc['V_MAX_NASCH_FINAL', 'Value'])
+        
+        # Wartość P jest liczbą zmiennoprzecinkową
+        p = df.loc['P_FINAL', 'Value']
+        
+        print(f"✅ Odczytano parametry: V_MAX = {v_max}, P = {p:.3f}")
+        return v_max, p
+        
+    except KeyError as e:
+        print(f"Błąd odczytu: Brak oczekiwanej kolumny lub indeksu w pliku. Brakuje: {e}")
+        return 10, 0.2
+    except Exception as e:
+        print(f"Wystąpił nieoczekiwany błąd podczas wczytywania pliku: {e}")
+        return 10, 0.2
