@@ -1,11 +1,6 @@
 import pandas as pd
 import numpy as np
-# Upewnij się, że te moduły są dostępne w Twoim środowisku
 from src.data_loader import CELL_LENGTH_M, TIME_STEP_S, load_and_aggregate_exid
-
-# Załóżmy, że te stałe są już zaimportowane z Twoich modułów:
-# CELL_LENGTH_M = 1.5
-# TIME_STEP_S = 0.2
 
 def calculate_nasch_params(df_recording, cell_length_m, time_step_s):
     """
@@ -16,11 +11,11 @@ def calculate_nasch_params(df_recording, cell_length_m, time_step_s):
         return {'v_max': None, 'p_final': None, 'count': 0}
 
     # Krok 1: Konwersja prędkości na jednostki NaSch
-    df_recording['v_nasch'] = (df_recording['speed_m_s'] * time_step_s) / cell_length_m
+    df_recording['v_nasch'] = (df_recording['lonVelocity'] * time_step_s) / cell_length_m
     
     # --- Wyznaczenie v_max ---
     # 95. percentyl prędkości w m/s
-    v_max_ms = df_recording['speed_m_s'].quantile(0.95)
+    v_max_ms = df_recording['lonVelocity'].quantile(0.95)
     v_max_kmh = v_max_ms * 3.6
     
     # Przeliczenie 95. percentyla na jednostki NaSch i zaokrąglenie w górę
@@ -28,20 +23,16 @@ def calculate_nasch_params(df_recording, cell_length_m, time_step_s):
 
     # --- Wyznaczenie p ---
     # 1. Estymacja na podstawie zmienności
-    mean_speed = df_recording['v_nasch'].mean()
-    std_speed = df_recording['v_nasch'].std()
+    mean_speed = df_recording['lonVelocity'].mean()
+    std_speed = df_recording['lonVelocity'].std()
     cv = std_speed / mean_speed if mean_speed > 0 else 0
     p_estimated = np.clip(cv * 0.5, 0.05, 0.5)
 
     # 2. Estymacja na podstawie hamowania (praktyczne p)
-    df_sorted = df_recording.sort_values(['trackId', 'frame'])
-    # Obliczanie różnicy prędkości dla każdego pojazdu
-    df_sorted['speed_change'] = df_sorted.groupby('trackId')['v_nasch'].diff()
-
-    # Liczymy zdarzenia hamowania (spadek prędkości o min. 0.5 jednostki)
-    decel_events = (df_sorted['speed_change'] < -0.5).sum()
-    total_events = len(df_sorted[df_sorted['speed_change'].notna()])
-    p_from_decel = decel_events / total_events if total_events > 0 else 0.15
+    ACCEL_THRESHOLD = -0.2
+    deceleration_events = (df_recording['lonAcceleration'] < ACCEL_THRESHOLD).sum()
+    total_events = len(df_recording) 
+    p_from_decel = deceleration_events / total_events if total_events > 0 else 0.15
 
     # 3. Finalne p (uśrednione)
     p_final = (p_estimated + p_from_decel) / 2
@@ -60,7 +51,7 @@ def calculate_nasch_params(df_recording, cell_length_m, time_step_s):
 
 # Wczytywanie i agregacja danych
 # Zakładamy, że `load_and_aggregate_exid` działa poprawnie
-tracks_df, _ = load_and_aggregate_exid(data_dir="data/data/", rec_ids=[f"{i:02}" for i in range(60)])
+tracks_df, _ = load_and_aggregate_exid(data_dir="data/data/", rec_ids=[f"{i:02}" for i in range(38)])
 results = []
 # Używamy tylko nagrań, które mają dane
 unique_recording_ids = tracks_df['recordingId'].unique()
@@ -103,16 +94,16 @@ if not calibration_df.empty:
     
     # Zapis finalnych wartości do zmiennych
     P_FINAL = mean_p
-    V_MAX_NASCH_FINAL = int(np.round(mean_v_max_nasch))
+    V_MAX_NASCH_FINAL = int(np.ceil(mean_v_max_nasch))
     V_MAX_KMH_FINAL = mean_v_max_kmh
     
     print("\n==============================================")
-    print("🚗 FINALNE WYZNACZONE PARAMETRY KALIBRACYJNE 🛣️")
+    print("FINALNE WYZNACZONE PARAMETRY KALIBRACYJNE")
     print("==============================================")
-    print(f"Średnia v_max (NaSch, zaokrąglona):  V_MAX = **{V_MAX_NASCH_FINAL}** komórek/krok")
-    print(f"Średnia v_max (wartość ciągła):      v_max_avg = **{mean_v_max_nasch:.2f}**")
-    print(f"Średnia v_max (km/h):                v_max_kmh = **{V_MAX_KMH_FINAL:.1f}** km/h")
-    print(f"Średnie p (prawdopodobieństwo):      P = **{P_FINAL:.3f}**")
+    print(f"Średnia v_max (NaSch, zaokrąglona):  V_MAX = {V_MAX_NASCH_FINAL} komórek/krok")
+    print(f"Średnia v_max (wartość ciągła):      v_max_avg = {mean_v_max_nasch:.2f}")
+    print(f"Średnia v_max (km/h):                v_max_kmh = {V_MAX_KMH_FINAL:.1f} km/h")
+    print(f"Średnie p (prawdopodobieństwo):      P = {P_FINAL:.3f}")
     print("==============================================")
     
     # --- ZAPIS DO PLIKU CSV ---
