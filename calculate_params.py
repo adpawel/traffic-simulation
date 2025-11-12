@@ -1,11 +1,14 @@
 import pandas as pd
 import numpy as np
-from src.data_loader import CELL_LENGTH_M, TIME_STEP_S, load_and_aggregate_exid
+
+from src.config import CELL_LENGTH_M, TIME_STEP_S
+from src.data_loader import load_and_aggregate_exid
+
+NUMBER_OF_RECORDINGS = 38
 
 def calculate_nasch_params(df_recording, cell_length_m, time_step_s):
     """
     Oblicza parametry v_max i p dla wszystkich danych z jednego nagrania
-    (niezależnie od liczby pasów).
     """
     if df_recording.empty:
         return {'v_max': None, 'p_final': None, 'count': 0}
@@ -47,20 +50,15 @@ def calculate_nasch_params(df_recording, cell_length_m, time_step_s):
         'count': len(df_recording)
     }
 
-# --- Główna pętla i agregacja ---
 
-# Wczytywanie i agregacja danych
-# Zakładamy, że `load_and_aggregate_exid` działa poprawnie
-tracks_df, _ = load_and_aggregate_exid(data_dir="data/data/", rec_ids=[f"{i:02}" for i in range(38)])
+tracks_df, _ = load_and_aggregate_exid(data_dir="data/data/", rec_ids=[f"{i:02}" for i in range(NUMBER_OF_RECORDINGS)])
 results = []
-# Używamy tylko nagrań, które mają dane
+
 unique_recording_ids = tracks_df['recordingId'].unique()
 
 print(f"Rozpoczynanie kalibracji dla {len(unique_recording_ids)} nagrań...")
-print(f"Użyte stałe: CELL_LENGTH_M = {CELL_LENGTH_M} m, TIME_STEP_S = {TIME_STEP_S} s")
 
 for rec_id in sorted(unique_recording_ids):
-    # Filtrowanie danych tylko dla bieżącego nagrania
     df_rec = tracks_df[tracks_df['recordingId'] == rec_id].copy()
     
     # Wywołanie funkcji kalibracyjnej
@@ -68,25 +66,15 @@ for rec_id in sorted(unique_recording_ids):
     params['recordingId'] = rec_id
     results.append(params)
     
-    # Pomiń wyświetlanie, jeśli nie ma danych (choć `unique_recording_ids` to wyklucza)
     if params['v_max'] is not None:
         print(f"Nagranie {rec_id} ({params['count']} pom.): v_max={params['v_max']} ({params['v_max_kmh']:.0f} km/h), p={params['p_final']:.3f}")
 
 # Zbieranie wyników do końcowego DataFrame
 calibration_df = pd.DataFrame(results)
 
-# Usuwanie wierszy z brakującymi danymi (jeśli jakieś się pojawiłyby)
 calibration_df.dropna(subset=['v_max', 'p_final'], inplace=True)
 
-print("\n--- Podsumowanie Kalibracji ---")
-print(calibration_df[['recordingId', 'v_max', 'p_final', 'v_max_kmh', 'count']])
-
-# --- Obliczanie i wyświetlanie średnich wartości końcowych ---
-
 if not calibration_df.empty:
-    # Obliczanie średnich (ważonych, jeśli 'count' miałby duże różnice)
-    # Dla uproszczenia (NaSch jest modelem dyskretnym, ale średnia daje sens estymacji)
-    
     # Średnie są używane jako finalne parametry modelu
     mean_v_max_nasch = calibration_df['v_max'].mean()
     mean_v_max_kmh = calibration_df['v_max_kmh'].mean()
@@ -97,19 +85,9 @@ if not calibration_df.empty:
     V_MAX_NASCH_FINAL = int(np.ceil(mean_v_max_nasch))
     V_MAX_KMH_FINAL = mean_v_max_kmh
     
-    print("\n==============================================")
-    print("FINALNE WYZNACZONE PARAMETRY KALIBRACYJNE")
-    print("==============================================")
-    print(f"Średnia v_max (NaSch, zaokrąglona):  V_MAX = {V_MAX_NASCH_FINAL} komórek/krok")
-    print(f"Średnia v_max (wartość ciągła):      v_max_avg = {mean_v_max_nasch:.2f}")
-    print(f"Średnia v_max (km/h):                v_max_kmh = {V_MAX_KMH_FINAL:.1f} km/h")
-    print(f"Średnie p (prawdopodobieństwo):      P = {P_FINAL:.3f}")
-    print("==============================================")
-    
-    # --- ZAPIS DO PLIKU CSV ---
     final_params_summary = pd.DataFrame({
         'Parameter': ['V_MAX_NASCH_FINAL', 'P_FINAL'],
-        'Value': [V_MAX_NASCH_FINAL, P_FINAL]
+        'Value': [V_MAX_NASCH_FINAL, f'{P_FINAL:.3f}']
     })
     
     # Zapis do pliku
