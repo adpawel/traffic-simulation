@@ -18,7 +18,7 @@ SCREEN_WIDTH = ROAD_WIDTH + 50    # Szerokość całego okna
 # Kolory (RGB)
 CAR_COLOR = (255, 255, 255)       
 BG_COLOR = (0, 0, 0)              
-ROAD_COLOR = (50, 50, 50)         
+ROAD_COLOR = (50, 50, 50)   
 
 
 def init_road(length, density, n_lanes=2):

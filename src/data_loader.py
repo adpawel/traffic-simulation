@@ -3,7 +3,7 @@ import numpy as np
 import os
 
 CELL_LENGTH_M = 7.5
-TIME_STEP_S = 1.0
+TIME_STEP_S = 1.6
 
 def load_and_aggregate_exid(data_dir, rec_ids):
     """
@@ -19,7 +19,7 @@ def load_and_aggregate_exid(data_dir, rec_ids):
             tracks = pd.read_csv(tracks_path, low_memory=False)
             tracks_meta = pd.read_csv(meta_path, low_memory=False)
 
-            # tracks = tracks[tracks['xVelocity'] > 0]
+            # tracks = tracks[tracks['xVelocity'] < 0]
             required_meta_cols = ['trackId', 'class', 'width'] 
             available_meta_cols = [col for col in required_meta_cols if col in tracks_meta.columns]
             
