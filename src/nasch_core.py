@@ -12,7 +12,7 @@ L = int(SIM_LENGTH_M / CELL_LENGTH)  # Długość drogi w komórkach (~133)
 CELL_SIZE = 10                    # Rozmiar pojedynczej komórki (piksele)
 ROAD_WIDTH = L * CELL_SIZE        # Szerokość wizualizowanej drogi
 ROAD_HEIGHT = CELL_SIZE * 2       # Wysokość pasa ruchu
-SCREEN_HEIGHT = ROAD_HEIGHT + 100 # Wysokość całego okna
+SCREEN_HEIGHT = ROAD_HEIGHT * 2 + 150   # Wysokość całego okna
 SCREEN_WIDTH = ROAD_WIDTH + 50    # Szerokość całego okna
 
 # Kolory (RGB)
@@ -21,22 +21,26 @@ BG_COLOR = (0, 0, 0)
 ROAD_COLOR = (50, 50, 50)         
 
 
-def init_road(length, density):
-    """Inicjalizuje drogę o zadanej długości i gęstości.
+def init_road(length, density, n_lanes=2):
+    """Inicjalizuje wielopasmową drogę.
     
     Args:
         length (int): Długość drogi w komórkach.
         density (float): Prawdopodobieństwo zajęcia komórki przez samochód.
+        n_lanes (int): Liczba pasów (domyślnie 2).
     
     Returns:
-        list: Lista reprezentująca stan drogi (v=0 lub None).
+        list[list]: Lista pasów, z których każdy to lista komórek (v=0 lub None).
     """
     road = []
-    for _ in range(length):
-        if random.random() < density:
-            road.append(0)
-        else:
-            road.append(None)
+    for _ in range(n_lanes):
+        lane = []
+        for _ in range(length):
+            if random.random() < density:
+                lane.append(0)
+            else:
+                lane.append(None)
+        road.append(lane)
     return road
 
 
@@ -76,7 +80,7 @@ def update_speeds(road, v_max, p):
     Returns:
         list: Zaktualizowany stan drogi (z nowymi prędkościami).
     """
-    new_road = road.copy()
+    new_road = road[:]
     length = len(road)
     for i in range(length):
         if road[i] is not None:
@@ -113,21 +117,106 @@ def move_cars(road):
             new_road[new_pos] = v
     return new_road, flow_count
 
+def change_lane(road, lane, pos, v_max, p_change, v_strat_nasch, gap_rear_nasch):
+    """
+    Decyzja kierowcy o zmianie pasa ruchu zgodnie z rozszerzonym modelem NaSch-CL.
+    
+    Uwzględnia zarówno motywację (V_strat), jak i warunek bezpieczeństwa z tyłu (Gap_rear).
+
+    Args:
+        road (list[list]): Aktualny stan drogi (lista pasów).
+        lane (int): Indeks pasa, na którym znajduje się pojazd.
+        pos (int): Pozycja pojazdu na pasie.
+        v_max (int): Maksymalna prędkość pojazdu w modelu NaSch.
+        p_change (float): Prawdopodobieństwo podjęcia decyzji o zmianie pasa.
+        v_strat_nasch (float): Próg motywacji do zmiany pasa [komórki/krok].
+        gap_rear_nasch (int): Minimalny bezpieczny dystans z tyłu [komórki].
+
+    Returns:
+        bool: True jeśli kierowca zmienia pas, False w przeciwnym wypadku.
+    """
+    other_lane = 1 - lane
+    length = len(road[lane])
+
+    # --- 1 MOTYWACJA DO ZMIANY PASA ---
+    gap_front = distance_to_next(road[lane], pos)       # Dystans do najbliższego pojazdu z przodu
+    max_v_possible = gap_front - 1                      # maksymalna prędkość możliwa na aktualnym pasie
+
+    # Kierowca jest sfrustrowany jeśli nie może jechać z prędkością bliską v_max
+    if v_max - max_v_possible < v_strat_nasch:
+        return False  # Brak wystarczającej motywacji do zmiany pasa
+
+    # Potencjalny zysk na drugim pasie
+    gap_front_other = distance_to_next(road[other_lane], pos)
+    if gap_front_other - 1 <= max_v_possible + v_strat_nasch:
+        return False  # Brak realnego zysku prędkości po zmianie pasa
+
+    # --- 2 WARUNEK DOSTĘPNOŚCI (miejsce na drugim pasie) ---
+    if road[other_lane][pos] is not None:
+        return False  # Komórka bezpośrednio naprzeciwko jest zajęta
+
+    # --- 3 WARUNEK BEZPIECZEŃSTWA Z TYŁU ---
+    distance_to_rear = 1
+    while distance_to_rear < length:
+        behind_pos = (pos - distance_to_rear) % length
+        v_rear = road[other_lane][behind_pos]
+
+        if v_rear is not None:
+            required_gap = v_rear + gap_rear_nasch  # minimalny bezpieczny dystans
+            if distance_to_rear < required_gap:
+                return False  # Zbyt blisko pojazdu z tyłu → niebezpieczna zmiana pasa
+            break
+        distance_to_rear += 1
+
+    # --- 4 PROBABILISTYCZNA DECYZJA KIEROWCY ---
+    return random.random() < p_change
+
 
 def step(road, v_max, p):
-    """Wykonuje jeden krok czasowy symulacji NaSch.
+    """Wykonuje jeden krok czasowy symulacji NaSch dla wielu pasów (np. 2).
     
     Args:
-        road (list): Stan drogi.
+        road (list[list]): Stan drogi [pas][pozycja].
         v_max (int): Maksymalna prędkość.
         p (float): Prawdopodobieństwo spowolnienia.
     
     Returns:
-        tuple: (nowy stan drogi, liczba pojazdów, które opuściły drogę)
+        tuple: (nowy stan drogi, łączny przepływ z wszystkich pasów)
     """
-    updated_speeds = update_speeds(road=road, v_max=v_max, p=p)
-    new_road, flow_count = move_cars(updated_speeds)
-    return new_road, flow_count
+    n_lanes = len(road)
+    length = len(road[0])
+    
+    new_road = []
+    total_flow = 0
+
+    # zmiana pasa
+    lane_changes = []
+    for lane in range(n_lanes):
+        for pos in range(length):
+            if road[lane][pos] is not None:
+                if change_lane(road, lane, pos, v_max, p_change=0.3, v_strat_nasch=0.9, gap_rear_nasch=2):
+                    lane_changes.append((lane, pos))
+
+    for lane, pos in lane_changes:
+        other = 1 - lane
+        if road[other][pos] is None:  # sprawdź czy nadal wolne
+            road[other][pos] = road[lane][pos]
+            road[lane][pos] = None
+
+    # aktualizacja prędkości
+    for lane in range(n_lanes):
+        updated_lane = update_speeds(road[lane], v_max, p)
+        new_road.append(updated_lane)
+
+    # przesunięcie samochodów
+    moved_road = []
+    for lane in range(n_lanes):
+        moved_lane, flow_count = move_cars(new_road[lane])
+        moved_road.append(moved_lane)
+        total_flow += flow_count
+
+    return moved_road, total_flow
+
 
 
 def run_simulation(steps, length, density, v_max, p):
@@ -143,29 +232,33 @@ def run_simulation(steps, length, density, v_max, p):
     Returns:
         tuple: (historia stanów drogi, lista przepływów w kolejnych krokach)
     """
-    road = init_road(length, density)
+    road = init_road(length, density, n_lanes=2)
     history = []
     point_flows = []
     for _ in range(steps):
-        history.append(road.copy())
+        history.append([lane.copy() for lane in road])
         road, flow_count = step(road, v_max, p)
         point_flows.append(flow_count)
     return history, point_flows
 
 
 def history_to_array(history):
-    """Konwertuje historię stanów drogi do postaci macierzy numerycznej.
-    
+    """Konwertuje historię stanów dwupasmowej drogi do macierzy numerycznej.
+
     Args:
-        history (list[list]): Historia stanów (lista list).
+        history (list[list[list]]): Historia stanów [czas][pas][pozycja].
     
     Returns:
-        list[list[int]]: Macierz, gdzie -1 oznacza puste komórki.
+        np.ndarray: Tablica 2D do heatmapy, gdzie -1 = pusto.
+                    Osie: (czas * liczba pasów, pozycja).
     """
-    arr = []
-    for row in history:
-        arr.append([cell if cell is not None else -1 for cell in row])
-    return arr
+    all_rows = []
+    for timestep in history:
+        for lane in timestep:
+            row = [cell if cell is not None else -1 for cell in lane]
+            all_rows.append(row)
+    return np.array(all_rows, dtype=int)
+
 
 
 # --- WIZUALIZACJA ---
@@ -204,7 +297,7 @@ def run_pygame_simulation(initial_density, v_max, p, steps_per_second=10):
     pygame.display.set_caption("NaSch: Symulacja Swobodnego Przepływu (Calibrated)")
     clock = pygame.time.Clock()
     
-    road = init_road(L, initial_density)
+    road = init_road(L, initial_density, n_lanes=2)
     font = pygame.font.Font(None, 24)
     
     running = True
@@ -212,9 +305,7 @@ def run_pygame_simulation(initial_density, v_max, p, steps_per_second=10):
     total_steps = 0
 
     center_x = SCREEN_WIDTH // 2
-    center_y = SCREEN_HEIGHT // 2
 
-    button_font = pygame.font.Font(None, 30)
     buttons = {
         "slower": pygame.Rect(center_x - 50, SCREEN_HEIGHT - 30, 20, 20),
         "faster": pygame.Rect(center_x + 50, SCREEN_HEIGHT - 30, 20, 20),
@@ -240,7 +331,6 @@ def run_pygame_simulation(initial_density, v_max, p, steps_per_second=10):
             pygame.draw.rect(screen, (80, 80, 80), rect, border_radius=8)
             draw_icon(name, rect)
 
-        text_font = pygame.font.Font(None, 20) 
         text_surface = font.render(f"{steps_per_second}", True, (255, 255, 255)) 
         screen.blit(text_surface, (center_x, SCREEN_HEIGHT - 30))
     
@@ -276,6 +366,8 @@ def run_pygame_simulation(initial_density, v_max, p, steps_per_second=10):
         
         screen.fill(BG_COLOR)
         pygame.draw.rect(screen, ROAD_COLOR, (25, 50, ROAD_WIDTH, ROAD_HEIGHT))
+
+        pygame.draw.rect(screen, ROAD_COLOR, (25, 50 + (ROAD_HEIGHT + 5), ROAD_WIDTH, ROAD_HEIGHT))
         
         text_info = (
             f"Krok: {total_steps} | Gęstość K: {initial_density:.3f} | "
@@ -284,12 +376,14 @@ def run_pygame_simulation(initial_density, v_max, p, steps_per_second=10):
         text_render = font.render(text_info, True, CAR_COLOR)
         screen.blit(text_render, (25, 10))
 
-        for i, v in enumerate(road):
-            if v is not None:
-                x_pos = 25 + i * CELL_SIZE
-                y_pos = 50 
-                color = get_car_color(v, v_max)
-                pygame.draw.rect(screen, color, (x_pos + 1, y_pos + 1, CELL_SIZE - 2, ROAD_HEIGHT - 2))
+        for lane_idx, lane in enumerate(road):
+            y_pos = 50 + lane_idx * (ROAD_HEIGHT + 5)
+            for i, v in enumerate(lane):
+                if v is not None:   
+                    x_pos = 25 + i * CELL_SIZE
+                    color = get_car_color(v, v_max)
+                    pygame.draw.rect(
+                        screen, color, (x_pos + 1, y_pos + 1, CELL_SIZE - 2, ROAD_HEIGHT - 2))
                 
         draw_buttons()
 
