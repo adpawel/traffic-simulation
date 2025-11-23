@@ -1,0 +1,39 @@
+[project]
+name = "traffic-simulation"
+version = "0.1.0"
+description = "NaSch traffic simulation with multi-lane support and pygame visualization"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "pygame>=2.6.1",
+]
+
+[project.optional-dependencies]
+# Kalibracja i analiza danych ExiD (opcjonalne)
+data = [
+    "pandas>=2.0.0",
+    "numpy>=1.24.0",
+    "matplotlib>=3.7.0",
+    "seaborn>=0.13.0",
+    "scikit-learn>=1.3.0",
+]
+
+# Jupyter notebooks (opcjonalne)
+notebooks = [
+    "ipykernel>=6.25.0",
+    "ipython>=8.12.0",
+    "jupyter-client>=8.3.0",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=9.0.1",
+    "pytest-cov>=7.0.0",
+]
+
+[build-system]
+requires = [
+    "setuptools<81",
+    "wheel"
+]
+build-backend = "setuptools.build_meta"
