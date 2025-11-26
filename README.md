@@ -62,8 +62,8 @@ git clone <repo-url>
 cd traffic-simulation
 
 # Utwórz środowisko wirtualne
-python -m venv .venv
-source .venv/bin/activate  # Linux/Mac (.venv\Scripts\activate na Windows)
+python3.13 -m venv venv lub py -3.13 -m venv venv # wersja musi być >=3.11
+source venv/bin/activate  # Linux/Mac (venv\Scripts\activate na Windows)
 
 # Zainstaluj podstawowe zależności
 pip install -e .

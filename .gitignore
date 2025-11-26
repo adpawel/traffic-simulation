@@ -80,6 +80,7 @@ data/data/
 data/exiD-dataset-v2.1/
 *.csv
 *.zip
+data/
 
 # Wygenerowane dane kalibracji (można commitować jako przykłady)
 # data/nasch_calibration_summary.csv
