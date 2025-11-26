@@ -43,6 +43,10 @@ var/
 *.egg-info/
 .installed.cfg
 *.egg
+MANIFEST
+
+# Python version files
+.python-version
 
 # Testy i coverage
 .coverage
@@ -64,16 +68,22 @@ coverage.xml
 *.sublime-project
 *.sublime-workspace
 
+# UV lock file (opcjonalnie commituj)
+# uv.lock
+
 # =========================================
 # DODATKOWE DLA TEGO PROJEKTU
 # =========================================
 
-# Dane z projektu NaSch / ExiD
-data/
-data_raw/
-data_processed/
+# Dane z projektu NaSch / ExiD (duże pliki - pobierz samodzielnie z ExiD dataset)
+data/data/
+data/exiD-dataset-v2.1/
 *.csv
 *.zip
+
+# Wygenerowane dane kalibracji (można commitować jako przykłady)
+# data/nasch_calibration_summary.csv
+# data/nasch_sim_K_Q.csv
 
 # Pliki tymczasowe symulacji / wyników
 output/
