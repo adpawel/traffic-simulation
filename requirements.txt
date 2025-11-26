@@ -1,0 +1,9 @@
+numpy
+pandas
+matplotlib
+pygame
+pyqt6
+pillow
+tornado
+requests
+tqdm

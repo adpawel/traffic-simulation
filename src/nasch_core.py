@@ -194,7 +194,7 @@ def step(road, v_max, p):
     for lane in range(n_lanes):
         for pos in range(length):
             if road[lane][pos] is not None:
-                if change_lane(road, lane, pos, v_max, p_change=0.3, v_strat_nasch=0.9, gap_rear_nasch=2):
+                if change_lane(road, lane, pos, v_max, p_change=0.8, v_strat_nasch=0.9, gap_rear_nasch=2):
                     lane_changes.append((lane, pos))
 
     for lane, pos in lane_changes:
