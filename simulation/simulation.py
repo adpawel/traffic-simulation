@@ -11,6 +11,7 @@ from src.config import (
     L,
     LANES,
     DENSITY,
+    MAX_SPEED
 )
 from .road import Road
 from .vehicle import Vehicle, LaneDecision
@@ -74,7 +75,7 @@ class Simulation:
 
         from .speedLimits import SpeedLimits
         speed_limits_list = speed_limits if speed_limits is not None else []
-        speed_limits_obj = SpeedLimits(speedLimits=speed_limits_list, maxSpeed=5)
+        speed_limits_obj = SpeedLimits(speedLimits=speed_limits_list, maxSpeed=MAX_SPEED)
         self.road = Road(lanesCount=lanes, length=length, speedLimits=speed_limits_obj)
         self.grid: Grid = [[None for _ in range(length)] for _ in range(lanes)]
         self.vehicles: List[Vehicle] = []

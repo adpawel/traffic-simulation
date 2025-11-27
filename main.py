@@ -73,6 +73,12 @@ def parse_args():
         default="",
         help="Pozycje przeszkód: 'x1,lane1,x2,lane2;...' (np. '30,1,32,1')"
     )
+    parser.add_argument(
+        "--speed-limits",
+        type=str,
+        default="",
+        help="Lokalne ograniczenia prędkości: 'x1,lane1,x2,lane2,vmax;...' (np. '60,0,80,1,3')"
+    )
     
     # Parametry wizualizacji
     parser.add_argument(
@@ -84,7 +90,7 @@ def parse_args():
     parser.add_argument(
         "--fps",
         type=int,
-        default=10,
+        default=2,
         help="Liczba klatek na sekundę (domyślnie: 10)"
     )
     parser.add_argument(
@@ -202,6 +208,39 @@ def parse_obstacles(obstacles_str: str, length: int):
     return obstacles
 
 
+def parse_speed_limits(speed_limits_str: str, length: int):
+    """Parsuje string z lokalnymi ograniczeniami prędkości i zwraca listę SpeedLimit."""
+    from simulation.speedLimits import SpeedLimit, Position
+    
+    if not speed_limits_str.strip():
+        return []
+    
+    speed_limits = []
+    for limit_spec in speed_limits_str.split(';'):
+        if not limit_spec.strip():
+            continue
+        parts = limit_spec.split(',')
+        if len(parts) != 5:
+            print(f"Uwaga: Nieprawidłowy format ograniczenia prędkości '{limit_spec}', pomijam")
+            continue
+        try:
+            x1, lane1, x2, lane2, v_max = map(int, parts)
+            if v_max < 0:
+                print(f"Uwaga: v_max musi być >= 0 w '{limit_spec}', pomijam")
+                continue
+            speed_limits.append(SpeedLimit(
+                pos_start=Position(x=x1, lane=lane1),
+                pos_end=Position(x=x2, lane=lane2),
+                v_max=v_max,
+                ticks=0,
+                active=True
+            ))
+        except ValueError:
+            print(f"Uwaga: Nieprawidłowe wartości w '{limit_spec}', pomijam")
+    
+    return speed_limits
+
+
 def main():
     """Główna funkcja."""
     args = parse_args()
@@ -219,10 +258,11 @@ def main():
         print("Błąd: p_change musi być w zakresie [0.0, 1.0]")
         sys.exit(1)
     
-    # Parsuj światła i przeszkody
+    # Parsuj światła, przeszkody i lokalne ograniczenia prędkości
     speed_limits = []
     speed_limits.extend(parse_traffic_lights(args.traffic_lights, args.length))
     speed_limits.extend(parse_obstacles(args.obstacles, args.length))
+    speed_limits.extend(parse_speed_limits(args.speed_limits, args.length))
     
     # Tworzenie symulacji
     sim = Simulation(

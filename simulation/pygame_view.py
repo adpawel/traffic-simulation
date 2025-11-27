@@ -76,6 +76,11 @@ class PygameView:
         self.clock = pygame.time.Clock()
         self.font = pygame.font.SysFont("monospace", 14)
         self.font_small = pygame.font.SysFont("monospace", 10)
+        self.font_legend = pygame.font.SysFont("monospace", 16)
+        
+        # Losowe kolory dla każdego lokalnego ograniczenia prędkości
+        self.speed_limit_colors = {}
+        self._assign_speed_limit_colors()
 
     def run(self) -> None:
         """Główna pętla wizualizacji."""
@@ -90,6 +95,34 @@ class PygameView:
         
         pygame.quit()
         sys.exit()
+
+    def _assign_speed_limit_colors(self) -> None:
+        """Przypisuje losowe kolory do lokalnych ograniczeń prędkości."""
+        import random
+        random.seed(42)  # Dla powtarzalności
+        
+        for limit in self.sim.road.speedLimits.speedLimits:
+            if limit.speedLimit > 0:  # Tylko dla lokalnych ograniczeń
+                # Losowy odcień w zakresie żółto-pomarańczowo-różowym
+                hue_range = [(30, 60), (200, 230), (280, 320)]  # żółty, niebieski, różowy
+                hue_choice = random.choice(hue_range)
+                hue = random.randint(hue_choice[0], hue_choice[1])
+                
+                # Konwersja HSV -> RGB (uproszczona)
+                if hue <= 60:  # żółty-pomarańczowy
+                    r = random.randint(200, 255)
+                    g = random.randint(150, 220)
+                    b = random.randint(0, 100)
+                elif hue <= 230:  # niebieski-cyjan
+                    r = random.randint(50, 150)
+                    g = random.randint(150, 220)
+                    b = random.randint(200, 255)
+                else:  # różowy-fioletowy
+                    r = random.randint(200, 255)
+                    g = random.randint(100, 180)
+                    b = random.randint(200, 255)
+                
+                self.speed_limit_colors[id(limit)] = (r, g, b)
 
     def _handle_events(self) -> None:
         """Obsługa zdarzeń klawiatury i zamknięcia okna."""
@@ -147,17 +180,27 @@ class PygameView:
         """Rysuje światła, przeszkody i ograniczenia prędkości."""
         
         for speed_limit in self.sim.road.speedLimits.speedLimits:
-            # Przeszkody (ticks=0) rysujemy zawsze, światła tylko gdy aktywne
-            if speed_limit.ticks == 0:
+            # Przeszkody (v_max=0, ticks=0) rysujemy zawsze
+            # Światła (v_max=0, ticks>0) tylko gdy aktywne
+            # Lokalne ograniczenia prędkości (v_max>0, ticks=0) rysujemy zawsze
+            if speed_limit.speedLimit == 0 and speed_limit.ticks == 0:
                 # Stała przeszkoda - zawsze widoczna
                 draw_it = True
                 color = (180, 0, 0)  # ciemnoczerwone
                 alpha = 220
-            elif speed_limit.active:
-                # Światło czerwone (aktywne)
+            elif speed_limit.speedLimit == 0 and speed_limit.ticks > 0:
+                # Światło
+                if speed_limit.active:
+                    draw_it = True
+                    color = (255, 50, 50)  # jasnoczerwone
+                    alpha = 160
+                else:
+                    draw_it = False
+            elif speed_limit.speedLimit > 0:
+                # Lokalne ograniczenie prędkości
                 draw_it = True
-                color = (255, 50, 50)  # jasnoczerwone
-                alpha = 160
+                color = self.speed_limit_colors.get(id(speed_limit), (255, 200, 50))
+                alpha = 180
             else:
                 # Światło zielone (nieaktywne) - nie rysujemy
                 draw_it = False
@@ -174,15 +217,23 @@ class PygameView:
                     screen_x = x * self.cell_width
                     screen_y = lane * self.cell_size
                     
-                    # Wypełnienie
+                    # Wypełnienie (z przezroczystością dla lokalnych ograniczeń)
                     rect = pygame.Rect(screen_x, screen_y, self.cell_width, self.cell_size)
-                    pygame.draw.rect(self.screen, color, rect)
+                    if speed_limit.speedLimit > 0:
+                        # Lokalne ograniczenie - lekko przezroczyste
+                        surf = pygame.Surface((self.cell_width, self.cell_size))
+                        surf.set_alpha(100)
+                        surf.fill(color)
+                        self.screen.blit(surf, (screen_x, screen_y))
+                    else:
+                        # Przeszkoda/światło - pełne
+                        pygame.draw.rect(self.screen, color, rect)
                     
                     # Mocniejsze obramowanie
                     pygame.draw.rect(self.screen, (255, 255, 255), rect, 2)
                     
                     # Dodaj krzyżyk dla przeszkód (lepsze rozpoznanie)
-                    if speed_limit.ticks == 0:
+                    if speed_limit.speedLimit == 0 and speed_limit.ticks == 0:
                         pygame.draw.line(
                             self.screen, 
                             (255, 255, 255),
@@ -268,6 +319,62 @@ class PygameView:
         for i, line in enumerate(lines):
             text = self.font.render(line, True, COLOR_TEXT)
             self.screen.blit(text, (10, y_offset + i * 18))
+        
+        # Legenda ograniczeń prędkości
+        self._draw_speed_limits_legend(y_offset)
+    
+    def _draw_speed_limits_legend(self, y_offset: int) -> None:
+        """Rysuje legendę z aktywnymi ograniczeniami prędkości."""
+        legend_x = self.window_width - 320
+        legend_y = y_offset
+        
+        # Nagłówek
+        header = self.font_legend.render("Ograniczenia prędkości:", True, COLOR_TEXT)
+        self.screen.blit(header, (legend_x, legend_y))
+        legend_y += 24
+        
+        speed_limits = self.sim.road.speedLimits.speedLimits
+        if not speed_limits:
+            no_limits = self.font_small.render("Brak", True, (150, 150, 150))
+            self.screen.blit(no_limits, (legend_x, legend_y))
+            return
+        
+        # Grupuj ograniczenia według typu
+        for i, limit in enumerate(speed_limits):
+            if i >= 5:  # Maksymalnie 5 ograniczeń na legendzie
+                more_text = self.font_small.render(f"... i {len(speed_limits) - 5} więcej", True, (150, 150, 150))
+                self.screen.blit(more_text, (legend_x, legend_y))
+                break
+            
+            # Określ typ i kolor
+            if limit.speedLimit == 0 and limit.ticks == 0:
+                label = "Przeszkoda"
+                color = (180, 0, 0)
+            elif limit.speedLimit == 0 and limit.ticks > 0:
+                status = "CZERWONE" if limit.active else "ZIELONE"
+                label = f"Światła ({status})"
+                color = (255, 50, 50) if limit.active else (50, 255, 50)
+            else:
+                label = f"v_max = {limit.speedLimit}"
+                color = self.speed_limit_colors.get(id(limit), (255, 200, 50))
+            
+            # Pozycja
+            x_min, x_max = limit.xRange
+            lane_min, lane_max = limit.lanesRange
+            if lane_min == lane_max:
+                pos_str = f"x:{x_min}-{x_max}, pas:{lane_min}"
+            else:
+                pos_str = f"x:{x_min}-{x_max}, pasy:{lane_min}-{lane_max}"
+            
+            # Rysuj kolorowy kwadracik
+            box_size = 12
+            pygame.draw.rect(self.screen, color, (legend_x, legend_y + 2, box_size, box_size))
+            pygame.draw.rect(self.screen, (255, 255, 255), (legend_x, legend_y + 2, box_size, box_size), 1)
+            
+            # Rysuj tekst
+            text = self.font.render(f"{label}: {pos_str}", True, COLOR_TEXT)
+            self.screen.blit(text, (legend_x + box_size + 5, legend_y))
+            legend_y += 20
 
 
 def main() -> None:
@@ -283,7 +390,7 @@ def main() -> None:
         gap_rear=GAP_REAR,
     )
     
-    view = PygameView(simulation=sim, cell_size=20, fps=10, window_width=1400)
+    view = PygameView(simulation=sim, cell_size=20, fps=2, window_width=1700)
     view.run()
 
 

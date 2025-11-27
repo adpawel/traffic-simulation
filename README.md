@@ -110,6 +110,9 @@ python main.py --lanes 3 --traffic-lights "50,0,52,2,10"
 # Dodaj przeszkodę (x=30-32, pas 1)
 python main.py --lanes 3 --obstacles "30,1,32,1"
 
+# Dodaj lokalne ograniczenie prędkości (x=30-32, v_max = 3 komórki na krok)
+python main.py --lanes 3 --speed-limits "30,0,32,2,3"
+
 # Kombinacja świateł i przeszkód
 python main.py --lanes 3 --traffic-lights "40,0,42,1,8;80,1,82,2,12" --obstacles "60,0,62,0"
 ```
