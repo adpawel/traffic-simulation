@@ -382,17 +382,7 @@ class Simulation:
             if v_new > 0 and random.random() < self.p_slow:
                 v_new -= 1
 
-            # 4. PRZED ruchem: sprawdzenie czy droga do przodu jest wolna
-            # Jeśli pojazd chce się ruszyć w przeszkodę, zmniejsz v
-            for check_dist in range(1, v_new + 1):
-                check_x = (v.pos.x + check_dist) % self.length
-                check_limit = self.road.getLimit(Position(x=check_x, lane=v.pos.lane))
-                
-                if check_limit == 0:  # Przeszkoda!
-                    v_new = check_dist - 1  # Zatrzymaj się przed przeszkodą
-                    break
-
-            # 5. Retardacja (opóźnienie reakcji)
+            # 4. Retardacja (opóźnienie reakcji)
             if v.reaction_delay > 0:
                 # Dodaj nową prędkość do bufora
                 v.velocity_buffer.append(v_new)
@@ -401,6 +391,23 @@ class Simulation:
             else:
                 # Bez opóźnienia - użyj od razu nowej prędkości
                 v.velocity = v_new
+
+            # 5. PRZED ruchem: sprawdzenie czy droga do przodu jest wolna
+            # Sprawdzamy dla RZECZYWISTEJ prędkości ruchu (v.velocity), nie v_new!
+            # Musimy sprawdzić zarówno przeszkody JAK I pojazdy już przeniesione do new_grid
+            for check_dist in range(1, v.velocity + 1):
+                check_x = (v.pos.x + check_dist) % self.length
+                check_limit = self.road.getLimit(Position(x=check_x, lane=v.pos.lane))
+                
+                # Przeszkoda
+                if check_limit == 0:
+                    v.velocity = check_dist - 1
+                    break
+                
+                # Kolizja z pojazdem już przeniesionym do new_grid
+                if new_grid[v.pos.lane][check_x] is not None:
+                    v.velocity = check_dist - 1
+                    break
 
             # 6. Ruch o v komórek
             old_x = v.pos.x
