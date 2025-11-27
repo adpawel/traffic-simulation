@@ -379,7 +379,17 @@ class Simulation:
             if v.velocity > 0 and random.random() < self.p_slow:
                 v.velocity -= 1
 
-            # 4. Ruch o v komórek
+            # 4. PRZED ruchem: sprawdzenie czy droga do przodu jest wolna
+            # Jeśli pojazd chce się ruszyć w przeszkodę, zmniejsz v
+            for check_dist in range(1, v.velocity + 1):
+                check_x = (v.pos.x + check_dist) % self.length
+                check_limit = self.road.getLimit(Position(x=check_x, lane=v.pos.lane))
+                
+                if check_limit == 0:  # Przeszkoda!
+                    v.velocity = check_dist - 1  # Zatrzymaj się przed przeszkodą
+                    break
+
+            # 5. Ruch o v komórek
             old_x = v.pos.x
             new_x = (old_x + v.velocity) % self.length
             lane = v.pos.lane
