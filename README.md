@@ -114,7 +114,7 @@ python main.py --lanes 3 --obstacles "30,1,32,1"
 python main.py --lanes 3 --speed-limits "30,0,32,2,3"
 
 # Kombinacja świateł i przeszkód
-python main.py --lanes 3 --traffic-lights "40,0,42,1,8;80,1,82,2,12" --obstacles "60,0,62,0"
+python main.py --lanes 3 --traffic-lights "40,0,42,1,8;80,1,82,2,12" --obstacles "60,0,62,0" --speed-limits "150,0,190,2,3"
 ```
 
 ### Tryb konsolowy (bez GUI)
@@ -193,6 +193,7 @@ DENSITY = 0.15       # Gęstość początkowa
 P_SLOW = 0.3         # Prawdopodobieństwo losowego zwolnienia (NaSch)
 P_CHANGE = 0.6       # Prawdopodobieństwo próby zmiany pasa
 GAP_REAR = 2         # Minimalny odstęp z tyłu przy zmianie pasa
+MAX_SPEED = 5        # Maksymalna prędkość w modelu
 ```
 
 ## Model NaSch
@@ -253,6 +254,7 @@ python main.py --lanes 3 --traffic-lights "30,0,32,1,10" --obstacles "70,2,72,2"
 **Limity prędkości:**
 - 🔴 **Ciemnoczerwony** - przeszkoda stała (v_max=0)
 - 🔴 **Jasnoczerwony** - światło czerwone aktywne (v_max=0)
+- 🟪 **Przezroczysty kwadrat** - lokalne ograniczenie prędkości
 - ⬜ **Brak koloru** - światło zielone (przejezdne)
 
 **Pojazdy (gradient prędkości):**
