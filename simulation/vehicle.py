@@ -27,6 +27,14 @@ class Vehicle:
     velocity: int = 0
     v_max: int = 5
     lane_change_motivation: int = 1  # minimalny zysk (w komórkach), żeby opłacało się zmienić pas
+    reaction_delay: int = 0
+    velocity_buffer: list = None
+    
+    def __post_init__(self):
+        """Inicjalizuje bufor prędkości na podstawie reaction_delay."""
+        if self.velocity_buffer is None:
+            # Bufor ma długość delay+1, zainicjowany aktualnymi prędkościami
+            self.velocity_buffer = [self.velocity] * (self.reaction_delay + 1)
 
     def decideLaneChange(self, view: LocalView) -> LaneDecision:
         """
