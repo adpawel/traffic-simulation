@@ -6,6 +6,7 @@ Uruchamia wizualizację pygame z parametrami z config.py lub przekazanymi z CLI.
 
 import argparse
 import sys
+import random
 from pathlib import Path
 
 # Dodaj src do ścieżki
@@ -58,6 +59,18 @@ def parse_args():
         type=int,
         default=GAP_REAR,
         help=f"Minimalny odstęp z tyłu przy zmianie pasa (domyślnie: {GAP_REAR})"
+    )
+    parser.add_argument(
+        "--reaction-delay",
+        type=int,
+        default=0,
+        help="Opóźnienie reakcji kierowcy w krokach, 0=brak, 1=~1.6s (domyślnie: 0)"
+    )
+    parser.add_argument(
+        "--seed",
+        type=int,
+        default=None,
+        help="Seed losowości dla powtarzalnych testów (domyślnie: brak)"
     )
     
     # Światła i przeszkody
@@ -145,7 +158,7 @@ def run_simulation_no_gui(sim: Simulation, steps: int) -> None:
     print("=== WYNIKI ===")
     print(f"Wykonane kroki: {sim.stats.step_count}")
     print(f"Łączny przepływ: {sim.stats.cumulative_flow}")
-    print(f"Średni przepływ: {sim.stats.avg_flow:.4f} pojazdów/krok")
+    print(f"Średni przepływ: {sim.stats.avg_flow:.4f} pojazdów/krok\n\n\n")
 
 
 def parse_traffic_lights(lights_str: str, length: int):
@@ -264,6 +277,10 @@ def main():
     speed_limits.extend(parse_obstacles(args.obstacles, args.length))
     speed_limits.extend(parse_speed_limits(args.speed_limits, args.length))
     
+    # Ustaw seed losowości jeśli podano
+    if args.seed is not None:
+        random.seed(args.seed)
+    
     # Tworzenie symulacji
     sim = Simulation(
         length=args.length,
@@ -272,6 +289,7 @@ def main():
         p_slow=args.p_slow,
         p_change=args.p_change,
         gap_rear=args.gap_rear,
+        reaction_delay=args.reaction_delay,
         speed_limits=speed_limits,
     )
     

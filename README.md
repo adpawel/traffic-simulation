@@ -114,7 +114,20 @@ python main.py --lanes 3 --obstacles "30,1,32,1"
 python main.py --lanes 3 --speed-limits "30,0,32,2,3"
 
 # Kombinacja świateł i przeszkód
-python main.py --lanes 3 --traffic-lights "40,0,42,1,8;80,1,82,2,12" --obstacles "60,0,62,0" --speed-limits "150,0,190,2,3"
+python main.py --lanes 3 --traffic-lights "40,0,42,1,8;80,1,82,2,12" --obstacles "60,0,62,0"
+
+# Reakcja kierowcy (opóźnienie 1 krok = ~1.6s)
+python main.py --lanes 1 --density 0.6 --reaction-delay 1
+
+# Powtarzalne testy z seedem
+python main.py --lanes 1 --density 0.6 --seed 42 --no-gui --steps 2000
+
+# Pełna demonstracja wszystkich opcji
+python main.py --lanes 3 --density 0.2 --seed 42 --reaction-delay 1 \
+  --speed-limits "20,0,40,2,3;60,1,80,2,2" \
+  --obstacles "50,0,55,1" \
+  --traffic-lights "45,0,45,2,5" \
+  --length 100
 ```
 
 ### Tryb konsolowy (bez GUI)
@@ -136,10 +149,13 @@ python main.py --help
 - `--p-slow` - prawdopodobieństwo losowego zwolnienia (domyślnie: 0.3)
 - `--p-change` - prawdopodobieństwo próby zmiany pasa (domyślnie: 0.6)
 - `--gap-rear` - minimalny odstęp z tyłu przy zmianie pasa (domyślnie: 2)
+- `--reaction-delay` - opóźnienie reakcji kierowcy w krokach (domyślnie: 0)
+- `--seed` - seed dla generatora losowego (domyślnie: losowy)
 
-**Światła i przeszkody:**
+**Światła, przeszkody i lokalne ograniczenia:**
 - `--traffic-lights` - światła sygnalizacyjne: `"x1,lane1,x2,lane2,ticks;..."` (np. `"50,0,52,1,10"`)
 - `--obstacles` - przeszkody stałe: `"x1,lane1,x2,lane2;..."` (np. `"30,1,32,1"`)
+- `--speed-limits` - lokalne ograniczenia prędkości: `"x1,lane1,x2,lane2,vmax;..."` (np. `"20,0,40,2,3"`)
 
 **Parametry wizualizacji:**
 - `--cell-size` - wysokość komórki w pikselach (domyślnie: 20)
@@ -193,7 +209,9 @@ DENSITY = 0.15       # Gęstość początkowa
 P_SLOW = 0.3         # Prawdopodobieństwo losowego zwolnienia (NaSch)
 P_CHANGE = 0.6       # Prawdopodobieństwo próby zmiany pasa
 GAP_REAR = 2         # Minimalny odstęp z tyłu przy zmianie pasa
-MAX_SPEED = 5        # Maksymalna prędkość w modelu
+MAX_SPEED = 5        # Maksymalna prędkość pojazdu (komórki/krok)
+REACTION_DELAY = 0   # Opóźnienie reakcji kierowcy (kroki)
+TIME_STEP_S = 1.6    # Czas jednego kroku symulacji w sekundach
 ```
 
 ## Model NaSch
@@ -203,7 +221,24 @@ Model Nagela-Schreckenberga implementuje następujące reguły (dla każdego poj
 1. **Przyspieszanie**: v → min(v + 1, v_max, speed_limit)
 2. **Hamowanie**: v → min(v, gap_front)
 3. **Losowe zwolnienie**: v → max(v - 1, 0) z prawdopodobieństwem p_slow
-4. **Ruch**: x → (x + v) mod L
+4. **Sprawdzenie przeszkód**: v → 0 jeśli przeszkoda na drodze
+5. **Retardacja (opcjonalna)**: opóźnienie reakcji kierowcy przez bufor FIFO
+6. **Ruch**: x → (x + v) mod L
+
+### Opóźnienie reakcji (Reaction Delay)
+
+Parametr `--reaction-delay N` symuluje biologiczny czas reakcji kierowcy:
+- Kierowca podejmuje decyzję o zmianie prędkości (przyspieszenie/hamowanie)
+- Faktyczna zmiana następuje dopiero po N krokach (~1.6s na krok)
+- Implementacja: bufor FIFO przechowujący historię N+1 wartości prędkości
+
+**Efekty przy różnych gęstościach:**
+- **Niska gęstość (0.2-0.3)**: Delay zmniejsza przepływ (~5-8%), bo pojazdy wolniej reagują na wolną przestrzeń
+- **Wysoka gęstość (0.6-0.8)**: Delay zwiększa przepływ (+7-14%!), stabilizując ruch i redukując fale uderzeniowe
+
+Przykład porównania (seed 48, density 0.6, 2000 kroków):
+- Bez delay: 0.269 pojazdów/krok (stop-and-go, korki)
+- Z delay=1: 0.406 pojazdów/krok (płynniejszy ruch)
 
 ### Zmiana pasa
 
@@ -212,9 +247,12 @@ Pojazdy mogą zmieniać pasy jeśli:
 - Bezpieczeństwo: wystarczający odstęp z przodu i z tyłu
 - Losowość: próba zmiany z prawdopodobieństwem p_change
 
-## Światła i przeszkody
+## Światła, przeszkody i lokalne ograniczenia prędkości
 
-System obsługuje dynamiczną sygnalizację świetlną i statyczne przeszkody.
+System obsługuje:
+- **Światła sygnalizacyjne** - dynamiczne, cykliczne (czerwone↔zielone)
+- **Przeszkody** - statyczne blokady (v_max=0)
+- **Lokalne ograniczenia prędkości** - strefy ze zmniejszonym v_max
 
 ### Format parametrów
 
@@ -233,6 +271,14 @@ System obsługuje dynamiczną sygnalizację świetlną i statyczne przeszkody.
 - Przeszkody są stałe (nie zmieniają stanu)
 - Blokują całkowicie ruch (v_max=0)
 
+**Lokalne ograniczenia prędkości:**
+```
+--speed-limits "x1,lane1,x2,lane2,vmax;x3,lane3,x4,lane4,vmax;..."
+```
+- `x1,x2` - zakres pozycji x
+- `lane1,lane2` - zakres pasów
+- `vmax` - maksymalna prędkość w tej strefie (komórki/krok)
+
 ### Przykłady
 
 ```bash
@@ -247,6 +293,15 @@ python main.py --lanes 3 --obstacles "40,1,42,1"
 
 # Kombinacja świateł i przeszkód
 python main.py --lanes 3 --traffic-lights "30,0,32,1,10" --obstacles "70,2,72,2"
+
+# Lokalne ograniczenie prędkości (strefa 30 → v_max=2)
+python main.py --lanes 2 --speed-limits "20,0,50,1,2"
+
+# Kompleksowy scenariusz
+python main.py --lanes 3 --density 0.2 --seed 42 --reaction-delay 1 \
+  --speed-limits "20,0,40,2,3;60,1,80,2,2" \
+  --obstacles "50,0,55,1" \
+  --traffic-lights "45,0,45,2,5"
 ```
 
 ### Wizualizacja w pygame
@@ -254,8 +309,12 @@ python main.py --lanes 3 --traffic-lights "30,0,32,1,10" --obstacles "70,2,72,2"
 **Limity prędkości:**
 - 🔴 **Ciemnoczerwony** - przeszkoda stała (v_max=0)
 - 🔴 **Jasnoczerwony** - światło czerwone aktywne (v_max=0)
-- 🟪 **Przezroczysty kwadrat** - lokalne ograniczenie prędkości
+- 🟦 **Losowe kolory** - lokalne ograniczenia prędkości (v_max > 0)
 - ⬜ **Brak koloru** - światło zielone (przejezdne)
+
+**Legenda** :
+- Pokazuje wszystkie aktywne strefy z ich zakresami, pasami i limitami prędkości
+- Każde lokalne ograniczenie ma przypisany losowy kolor dla łatwego rozróżnienia
 
 **Pojazdy (gradient prędkości):**
 - 🔴 **Czerwony** - stojący (v=0)

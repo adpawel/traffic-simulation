@@ -11,7 +11,8 @@ from src.config import (
     L,
     LANES,
     DENSITY,
-    MAX_SPEED
+    MAX_SPEED,
+    REACTION_DELAY
 )
 from .road import Road
 from .vehicle import Vehicle, LaneDecision
@@ -56,6 +57,7 @@ class Simulation:
         p_slow: float = P_SLOW,
         p_change: float = P_CHANGE,
         gap_rear: int = GAP_REAR,
+        reaction_delay: int = REACTION_DELAY,
         record_history: bool = False,
         speed_limits: Optional[List] = None,
     ) -> None:
@@ -83,6 +85,7 @@ class Simulation:
         self.p_slow = p_slow
         self.p_change = p_change
         self.gap_rear = gap_rear
+        self.reaction_delay = reaction_delay
         self.density = density
 
         self.stats = SimulationStats()
@@ -104,7 +107,7 @@ class Simulation:
             for x in range(self.length):
                 if random.random() < self.density and self.grid[lane][x] is None:
                     pos = Position(x=x, lane=lane)
-                    v = Vehicle(pos=pos)  # v_max i inne rzeczy może brać z configu w samej klasie Vehicle
+                    v = Vehicle(pos=pos, reaction_delay=self.reaction_delay)
                     self.grid[lane][x] = v
                     self.vehicles.append(v)
 
@@ -368,18 +371,38 @@ class Simulation:
             # 1. Przyspieszanie
             # maksymalna prędkość z ograniczeń: v_max pojazdu & ograniczenie drogi
             v_max_allowed = min(v.v_max, view.speed_limit)
-            v.velocity = min(v.velocity + 1, v_max_allowed)
+            v_new = min(v.velocity + 1, v_max_allowed)
 
             # 2. Hamowanie na podstawie wolnego dystansu z przodu
             gap = view.dist_front_same
-            if gap < v.velocity:
-                v.velocity = gap
+            if gap < v_new:
+                v_new = gap
 
             # 3. Losowe zwolnienie
-            if v.velocity > 0 and random.random() < self.p_slow:
-                v.velocity -= 1
+            if v_new > 0 and random.random() < self.p_slow:
+                v_new -= 1
 
-            # 4. Ruch o v komórek
+            # 4. PRZED ruchem: sprawdzenie czy droga do przodu jest wolna
+            # Jeśli pojazd chce się ruszyć w przeszkodę, zmniejsz v
+            for check_dist in range(1, v_new + 1):
+                check_x = (v.pos.x + check_dist) % self.length
+                check_limit = self.road.getLimit(Position(x=check_x, lane=v.pos.lane))
+                
+                if check_limit == 0:  # Przeszkoda!
+                    v_new = check_dist - 1  # Zatrzymaj się przed przeszkodą
+                    break
+
+            # 5. Retardacja (opóźnienie reakcji)
+            if v.reaction_delay > 0:
+                # Dodaj nową prędkość do bufora
+                v.velocity_buffer.append(v_new)
+                # Użyj najstarszej prędkości z bufora (FIFO)
+                v.velocity = v.velocity_buffer.pop(0)
+            else:
+                # Bez opóźnienia - użyj od razu nowej prędkości
+                v.velocity = v_new
+
+            # 6. Ruch o v komórek
             old_x = v.pos.x
             new_x = (old_x + v.velocity) % self.length
             lane = v.pos.lane
