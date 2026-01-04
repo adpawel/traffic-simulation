@@ -1,0 +1,42 @@
+global:
+  steps: 2000
+  no_gui: true
+  seeds: [1, 2, 3]
+
+scenarios:
+  - name: baseline
+    params:
+      lanes: 1
+      density: 0.2
+      p_slow: 0.1
+
+    analysis:
+      heatmap:
+        enabled: true
+        density: 0.4
+        steps: 1200
+
+  - name: reaction_delay
+    sweep:
+      reaction_delay: [0, 1, 2]
+
+    params:
+      lanes: 1
+      density: 0.4
+
+    analysis:
+      heatmap:
+        enabled: true
+        density: 0.5
+
+  - name: density_sweep
+    sweep:
+      density: [0.05, 0.1, 0.2, 0.3, 0.4, 0.5]
+    params:
+      lanes: 1
+      p_slow: 0.2
+
+analysis_global:
+  fundamental_diagram:
+    enabled: true
+    lanes: 1

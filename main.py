@@ -13,7 +13,6 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent / "src"))
 
 from simulation.simulation import Simulation
-from simulation.pygame_view import PygameView
 from src.config import L, LANES, DENSITY, P_SLOW, P_CHANGE, GAP_REAR
 
 
@@ -160,6 +159,9 @@ def run_simulation_no_gui(sim: Simulation, steps: int) -> None:
     print(f"Łączny przepływ: {sim.stats.cumulative_flow}")
     print(f"Średni przepływ: {sim.stats.avg_flow:.4f} pojazdów/krok\n\n\n")
 
+    # === OUTPUT DLA RUNNERA CSV (MASZYNOWY) ===
+    print(f"__METRICS__ flow={sim.stats.avg_flow:.6f}")
+
 
 def parse_traffic_lights(lights_str: str, length: int):
     """Parsuje string ze światłami i zwraca listę SpeedLimit."""
@@ -300,6 +302,7 @@ def main():
     
     # Wizualizacja pygame
     try:
+        from simulation.pygame_view import PygameView
         view = PygameView(
             simulation=sim,
             cell_size=args.cell_size,

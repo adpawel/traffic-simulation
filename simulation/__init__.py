@@ -7,7 +7,11 @@ from .vehicle import Vehicle, LaneDecision
 from .road import Road
 from .localview import LocalView
 from .speedLimits import Position, SpeedLimit, SpeedLimits
-from .pygame_view import PygameView
+try:
+    from .pygame_view import PygameView
+except ImportError:
+    PygameView = None
+
 
 __all__ = [
     'Simulation',
