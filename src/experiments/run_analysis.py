@@ -1,3 +1,4 @@
+import sys
 import yaml
 import subprocess
 from pathlib import Path
@@ -28,7 +29,7 @@ for sc in config["scenarios"]:
         out_png = PLOTS_DIR / f"{name}_fundamental.png"
 
         cmd = [
-            "python", str(BASE_DIR / "fundamental_diagram.py"),
+            sys.executable, str(BASE_DIR / "fundamental_diagram.py"),
             "--png", str(out_png),
             "--no-plot"
         ]
@@ -46,7 +47,7 @@ for sc in config["scenarios"]:
         out_png = HEATMAPS_DIR / f"{name}_heatmap.png"
 
         cmd = [
-            "python", str(BASE_DIR / "trajectory_heatmap.py"),
+            sys.executable, str(BASE_DIR / "trajectory_heatmap.py"),
             "--heatmap-png", str(out_png),
             "--no-plot"
         ]
