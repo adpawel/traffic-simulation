@@ -89,7 +89,7 @@ data/exiD-dataset-v2.1/
 output/
 results/
 plots/
-*.png
+# *.png
 *.jpg
 *.gif
 *.mp4
