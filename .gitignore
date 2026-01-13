@@ -78,9 +78,8 @@ coverage.xml
 # Dane z projektu NaSch / ExiD (duże pliki - pobierz samodzielnie z ExiD dataset)
 data/data/
 data/exiD-dataset-v2.1/
-*.csv
+# *.csv
 *.zip
-data/
 
 # Wygenerowane dane kalibracji (można commitować jako przykłady)
 # data/nasch_calibration_summary.csv
@@ -90,7 +89,7 @@ data/
 output/
 results/
 plots/
-*.png
+# *.png
 *.jpg
 *.gif
 *.mp4
