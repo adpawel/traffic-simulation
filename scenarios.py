@@ -154,91 +154,155 @@ def scenario_shockwave(save_path: str = "scenario_shockwave.png"):
     plt.show()
 
 
-def scenario_lanes_comparison(save_path: str = "scenario_lanes.png"):
-    """Porównanie przepustowości 1 vs 2 vs 3 pasy."""
+def scenario_light_timing(save_path: str = "scenario_lights.png"):
+    """Wpływ czasu cyklu świateł na powstawanie korków przy różnych gęstościach."""
     print("=" * 60)
-    print("SCENARIUSZ: Porównanie 1 vs 3 pasy")
+    print("SCENARIUSZ: Światła - krótki vs długi cykl")
     print("=" * 60)
     
-    length = 200
-    density = 0.25
-    steps = 500
+    length = 150
+    lanes = 1
+    warmup = 100
+    spacetime_steps = 200
+    
+    configs = [
+        ('Niski ruch\nkrótki cykl', 0.12, 15),
+        ('Niski ruch\ndługi cykl', 0.12, 50),
+        ('Wysoki ruch\nkrótki cykl', 0.30, 15),
+        ('Wysoki ruch\ndługi cykl', 0.30, 50),
+    ]
     
     results = {}
+    spacetime_data = {}
     
-    for lanes in [1, 2, 3]:
-        print(f"Symulacja dla {lanes} pasów...")
-        sim = create_simulation(length=length, lanes=lanes, density=density)
+    for name, density, cycle in configs:
+        print(f"Symulacja: gęstość {density*100:.0f}%, cykl {cycle}...")
         
-        for _ in range(200):
+        random.seed(123)
+        np.random.seed(123)
+        
+        light_pos = length // 2
+        light = SpeedLimit(
+            pos_start=Position(x=light_pos, lane=0),
+            pos_end=Position(x=light_pos + 2, lane=0),
+            v_max=0,
+            ticks=cycle // 2,
+            active=True
+        )
+        
+        sim = create_simulation(length=length, lanes=lanes, density=density,
+                               speed_limits=[light])
+        
+        for _ in range(warmup):
             sim.step()
+        
+        st_data = collect_spacetime_data(sim, spacetime_steps)
+        spacetime_data[name] = st_data
         
         sim.stats.cumulative_flow = 0
         sim.stats.step_count = 0
+        flows = collect_flow_data(sim, 300)
         
-        flows = collect_flow_data(sim, steps)
-        
-        results[lanes] = {
-            'flows': flows,
+        results[name] = {
+            'density': density,
+            'cycle': cycle,
             'avg_flow': np.mean(flows),
-            'total_flow': sum(flows)
+            'std_flow': np.std(flows)
         }
+        print(f"  Przepływ: {results[name]['avg_flow']:.3f}")
+    
+    fig, axes = plt.subplots(2, 3, figsize=(16, 10))
+    
+    # Diagramy czasoprzestrzenne (2x2)
+    for idx, (name, data) in enumerate(spacetime_data.items()):
+        row, col = idx // 2, idx % 2
+        ax = axes[row, col]
         
-        print(f"  Średni przepływ: {results[lanes]['avg_flow']:.2f} poj/krok")
+        st = data[:, 0, :]
+        st_plot = np.where(st >= 0, st, np.nan)
+        
+        im = ax.imshow(st_plot.T, aspect='auto', cmap='RdYlGn',
+                      origin='lower', vmin=0, vmax=5)
+        
+        # Zaznaczenie pozycji światła
+        ax.axhline(y=length//2, color='white', linestyle='--', linewidth=1, alpha=0.7)
+        
+        ax.set_xlabel('Czas [kroki]', fontsize=10)
+        ax.set_ylabel('Pozycja', fontsize=10)
+        ax.set_title(name, fontsize=11, fontweight='bold')
     
-    fig, axes = plt.subplots(1, 3, figsize=(15, 5))
-    colors = {1: 'red', 2: 'orange', 3: 'green'}
+    # Colorbar
+    cbar = plt.colorbar(im, ax=axes[0, 1], shrink=0.8, pad=0.02)
+    cbar.set_label('Prędkość', fontsize=10)
     
-    ax1 = axes[0]
-    for lanes, data in results.items():
-        window = 20
-        smoothed = np.convolve(data['flows'], np.ones(window)/window, mode='valid')
-        ax1.plot(smoothed, color=colors[lanes], label=f'{lanes} pas{"y" if lanes > 1 else ""}', linewidth=2)
+    # Porównanie przepływu
+    ax_bar = axes[0, 2]
+    names_short = ['Niski/krótki', 'Niski/długi', 'Wysoki/krótki', 'Wysoki/długi']
+    avgs = [results[n]['avg_flow'] for n in spacetime_data.keys()]
+    colors = ['lightblue', 'blue', 'lightcoral', 'darkred']
     
-    ax1.set_xlabel('Czas [kroki]', fontsize=11)
-    ax1.set_ylabel('Przepływ [pojazdy/krok]', fontsize=11)
-    ax1.set_title('Przepływ w czasie', fontsize=12, fontweight='bold')
-    ax1.legend()
-    ax1.grid(True, alpha=0.3)
+    bars = ax_bar.bar(range(4), avgs, color=colors)
+    ax_bar.set_xticks(range(4))
+    ax_bar.set_xticklabels(names_short, fontsize=9, rotation=15, ha='right')
+    ax_bar.set_ylabel('Przepływ [poj/krok]', fontsize=11)
+    ax_bar.set_title('Porównanie przepływu', fontsize=12, fontweight='bold')
     
-    ax2 = axes[1]
-    lanes_list = list(results.keys())
-    avg_flows = [results[l]['avg_flow'] for l in lanes_list]
+    for bar, val in zip(bars, avgs):
+        ax_bar.text(bar.get_x() + bar.get_width()/2, bar.get_height() + 0.005,
+                   f'{val:.3f}', ha='center', fontsize=9, fontweight='bold')
+    ax_bar.grid(True, alpha=0.3, axis='y')
     
-    bars = ax2.bar(lanes_list, avg_flows, color=[colors[l] for l in lanes_list])
-    ax2.set_xlabel('Liczba pasów', fontsize=11)
-    ax2.set_ylabel('Średni przepływ [poj/krok]', fontsize=11)
-    ax2.set_title('Średni przepływ vs liczba pasów', fontsize=12, fontweight='bold')
-    ax2.set_xticks(lanes_list)
+    # Wnioski
+    ax_text = axes[1, 2]
+    ax_text.axis('off')
     
-    for bar, val in zip(bars, avg_flows):
-        ax2.text(bar.get_x() + bar.get_width()/2, bar.get_height() + 0.02,
-                f'{val:.2f}', ha='center', fontsize=10)
+    low_short = results['Niski ruch\nkrótki cykl']['avg_flow']
+    low_long = results['Niski ruch\ndługi cykl']['avg_flow']
+    high_short = results['Wysoki ruch\nkrótki cykl']['avg_flow']
+    high_long = results['Wysoki ruch\ndługi cykl']['avg_flow']
     
-    ax3 = axes[2]
-    efficiency = [results[l]['avg_flow'] / l for l in lanes_list]
+    diff_low = (low_long / low_short - 1) * 100
+    diff_high = (high_long / high_short - 1) * 100
     
-    bars3 = ax3.bar(lanes_list, efficiency, color=[colors[l] for l in lanes_list])
-    ax3.set_xlabel('Liczba pasów', fontsize=11)
-    ax3.set_ylabel('Przepływ na pas [poj/krok/pas]', fontsize=11)
-    ax3.set_title('Efektywność na pas', fontsize=12, fontweight='bold')
-    ax3.set_xticks(lanes_list)
+    conclusions = f"""
+    ANALIZA WYNIKÓW
+
+    Przy NISKIM ruchu (12%):
+    Krótki cykl: {low_short:.3f}
+    Długi cykl:  {low_long:.3f}
+    Różnica: {diff_low:+.1f}%
+
+    Przy WYSOKIM ruchu (30%):
+    Krótki cykl: {high_short:.3f}
+    Długi cykl:  {high_long:.3f}
+    Różnica: {diff_high:+.1f}%
+
+    WNIOSEK:
     
-    for bar, val in zip(bars3, efficiency):
-        ax3.text(bar.get_x() + bar.get_width()/2, bar.get_height() + 0.01,
-                f'{val:.3f}', ha='center', fontsize=10)
+    Przy wysokim natężeniu krótki cykl
+    tworzy KOLEJKĘ przed światłem -
+    widać czerwone pasy propagujące
+    się wstecz (efekt fali).
+
+    Długi cykl pozwala rozładować
+    kolejkę zanim zmieni się na
+    czerwone.
+    """
     
-    plt.suptitle(f'Scenariusz 2: Porównanie 1 vs 2 vs 3 pasy (gęstość: {density*100:.0f}%)', 
-                 fontsize=14, fontweight='bold', y=1.00)
+    ax_text.text(0.05, 0.95, conclusions, transform=ax_text.transAxes, fontsize=10,
+                verticalalignment='top', fontfamily='monospace',
+                bbox=dict(boxstyle='round', facecolor='lightyellow', alpha=0.8))
+    
+    plt.suptitle('Scenariusz 2: Wpływ czasu cyklu świateł na ruch przy różnych gęstościach', 
+                 fontsize=14, fontweight='bold', y=0.995)
     plt.tight_layout()
     plt.savefig(save_path, dpi=150, bbox_inches='tight')
     print(f"\nZapisano: {save_path}")
     plt.show()
     
-    print(f"\n  1 pas:  {results[1]['avg_flow']:.3f} poj/krok (bazowy)")
-    print(f"  2 pasy: {results[2]['avg_flow']:.3f} poj/krok ({results[2]['avg_flow']/results[1]['avg_flow']:.1f}x)")
-    print(f"  3 pasy: {results[3]['avg_flow']:.3f} poj/krok ({results[3]['avg_flow']/results[1]['avg_flow']:.1f}x)")
-    print(f"\n  → 3 pasy ≠ 3× przepływ! (efekt zmiany pasów)")
+    print("\nPODSUMOWANIE:")
+    print(f"  Niski ruch: zmiana cyklu daje {diff_low:+.1f}% przepływu")
+    print(f"  Wysoki ruch: zmiana cyklu daje {diff_high:+.1f}% przepływu")
 
 
 def scenario_accident(save_path: str = "scenario_accident.png"):
@@ -607,15 +671,6 @@ def pygame_shockwave():
     view.run()
 
 
-def pygame_lanes():
-    print("LANES - Symulacja 3-pasmowa")
-    sim = create_simulation(length=150, lanes=3, density=0.22)
-    for _ in range(100):
-        sim.step()
-    view = PygameView(simulation=sim, cell_size=25, fps=10, window_width=1400)
-    view.run()
-
-
 def pygame_accident():
     print("ACCIDENT - Wypadek na środkowym pasie")
     length = 150
@@ -674,7 +729,7 @@ def run_all_scenarios():
     
     scenario_shockwave()
     print("\n")
-    scenario_lanes_comparison()
+    scenario_light_timing()
     print("\n")
     scenario_accident()
     print("\n")
@@ -685,7 +740,7 @@ def run_all_scenarios():
     print("\nWszystkie scenariusze zakończone!")
     print("Wygenerowane pliki:")
     print("  - scenario_shockwave.png")
-    print("  - scenario_lanes.png")
+    print("  - scenario_lights.png")
     print("  - scenario_accident.png")
     print("  - scenario_drivers.png")
     print("  - scenario_speedlimit.png")
@@ -696,7 +751,7 @@ def main():
     
     parser = argparse.ArgumentParser(description="Scenariusze demonstracyjne NaSch")
     parser.add_argument("scenario", nargs='?', default="all",
-                        choices=['all', 'shockwave', 'lanes', 'accident', 'drivers', 'speedlimit', 'lights'])
+                        choices=['all', 'shockwave', 'lighttiming', 'accident', 'drivers', 'speedlimit', 'lights'])
     parser.add_argument("--no-show", action="store_true")
     parser.add_argument("--pygame", "-p", action="store_true")
     
@@ -705,7 +760,6 @@ def main():
     if args.pygame:
         pygame_scenarios = {
             'shockwave': pygame_shockwave,
-            'lanes': pygame_lanes,
             'accident': pygame_accident,
             'speedlimit': pygame_speedlimit,
             'lights': pygame_traffic_lights,
@@ -716,8 +770,8 @@ def main():
             print("  python scenarios.py shockwave --pygame")
             return
         
-        if args.scenario == 'drivers':
-            print("Scenariusz 'drivers' nie ma wersji pygame (wymaga porównania)")
+        if args.scenario in ['drivers', 'lighttiming']:
+            print(f"Scenariusz '{args.scenario}' nie ma wersji pygame (wymaga porównania)")
             return
             
         pygame_scenarios[args.scenario]()
@@ -729,7 +783,7 @@ def main():
     
     chart_scenarios = {
         'shockwave': scenario_shockwave,
-        'lanes': scenario_lanes_comparison,
+        'lighttiming': scenario_light_timing,
         'accident': scenario_accident,
         'drivers': scenario_driver_behavior,
         'speedlimit': scenario_speed_limit,
