@@ -11,6 +11,6 @@ P_SLOW = 0.25             # Prawdopodobieństwo losowego zwolnienia (parametr p 
 # Parametry zmiany pasa
 P_CHANGE = 0.525           # Prawdopodobieństwo, że kierowca podejmie decyzję o zmianie pasa, gdy warunki są sprzyjające [0.0 - 1.0]
 V_STRAT = 1.0            # Wymagana motywacja do zmiany pasa (minimalna strata prędkości) [komórki/krok]
-GAP_REAR = 2             # Minimalny bezpieczny odstęp (bufor) za pojazdem zmieniającym pas [komórki]
+GAP_REAR = 1             # Minimalny bezpieczny odstęp (bufor) za pojazdem zmieniającym pas [komórki]
 MAX_SPEED = 5            # Maksymalna prędkość w modelu [komórki/krok]
 REACTION_DELAY = 1       # Opóźnienie reakcji kierowcy [kroki], 0 = bez opóźnienia, 1 = ~1.6s

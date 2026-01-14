@@ -19,7 +19,7 @@ from simulation.pygame_view import PygameView
 CALIBRATED = {
     'p_slow': 0.25,
     'p_change': 0.525,
-    'gap_rear': 2,
+    'gap_rear': 1,
     'reaction_delay': 1
 }
 

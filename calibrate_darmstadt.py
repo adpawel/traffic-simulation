@@ -39,7 +39,7 @@ class CalibrationConfig:
     
     def __post_init__(self):
         if self.gap_rear_values is None:
-            self.gap_rear_values = [2]
+            self.gap_rear_values = [1, 2]
         if self.reaction_delay_values is None:
             self.reaction_delay_values = [0, 1]
         if self.densities is None:
