@@ -6,6 +6,7 @@ import numpy as np
 from scipy.optimize import minimize
 from pathlib import Path
 import sys
+import os
 import random
 from itertools import product
 from dataclasses import dataclass
@@ -14,10 +15,10 @@ import matplotlib.pyplot as plt
 import json
 from datetime import datetime
 
-sys.path.insert(0, str(Path(__file__).parent))
+sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from simulation.simulation import Simulation
-from src.config import CELL_LENGTH_M, TIME_STEP_S, MAX_SPEED
+from simulation.config import CELL_LENGTH_M, TIME_STEP_S, MAX_SPEED
 
 
 @dataclass
@@ -39,7 +40,7 @@ class CalibrationConfig:
     
     def __post_init__(self):
         if self.gap_rear_values is None:
-            self.gap_rear_values = [2]
+            self.gap_rear_values = [1, 2]
         if self.reaction_delay_values is None:
             self.reaction_delay_values = [0, 1]
         if self.densities is None:
@@ -444,8 +445,8 @@ def main():
     parser.add_argument("--csv", type=str,
                         default="data/A001/A001_20250101_000000_-_20250201_000000_1min.csv")
     parser.add_argument("--detector", type=str, default="D4")
-    parser.add_argument("--output-plot", type=str, default="calibration_result.png")
-    parser.add_argument("--output-json", type=str, default="calibration_result.json")
+    parser.add_argument("--output-plot", type=str, default="analysis/results/calibration_result.png")
+    parser.add_argument("--output-json", type=str, default="analysis/results/calibration_result.json")
     parser.add_argument("--no-plot", action="store_true")
     
     args = parser.parse_args()
@@ -454,6 +455,10 @@ def main():
     
     result = calibrate(config)
     result['detector_group'] = args.detector
+    
+    # Ensure output directory exists
+    os.makedirs(os.path.dirname(args.output_json) or '.', exist_ok=True)
+    os.makedirs(os.path.dirname(args.output_plot) or '.', exist_ok=True)
     
     save_json(result, args.output_json)
     plot_results(result, save_path=args.output_plot, show=not args.no_plot)

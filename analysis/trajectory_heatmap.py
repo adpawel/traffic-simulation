@@ -4,11 +4,12 @@ Skrypt generujący heatmapę trajektorii pojazdów (czas vs pozycja, kolory = pr
 """
 
 import sys
+import os
 import random
 from pathlib import Path
 from collections import defaultdict
 
-sys.path.insert(0, str(Path(__file__).parent / "src"))
+sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from simulation.simulation import Simulation
 import numpy as np
@@ -105,6 +106,7 @@ def plot_trajectory_heatmap(trajectories, vehicle_ids, road_length,
     plt.tight_layout()
     
     if save_path:
+        os.makedirs(os.path.dirname(save_path) or '.', exist_ok=True)
         plt.savefig(save_path, dpi=150, bbox_inches='tight')
         print(f"Heatmapa zapisana: {save_path}")
     
@@ -142,6 +144,7 @@ def plot_single_vehicle_trajectory(trajectories, vehicle_id, road_length,
     plt.tight_layout()
     
     if save_path:
+        os.makedirs(os.path.dirname(save_path) or '.', exist_ok=True)
         plt.savefig(save_path, dpi=150, bbox_inches='tight')
         print(f"Trajektoria zapisana: {save_path}")
     
@@ -164,8 +167,8 @@ if __name__ == "__main__":
                        help="Długość drogi (domyślnie: 133)")
     parser.add_argument("--seed", type=int, default=42,
                        help="Seed losowości (domyślnie: 42)")
-    parser.add_argument("--heatmap-png", type=str, default="trajectory_heatmap.png",
-                       help="Ścieżka do heatmapy (domyślnie: trajectory_heatmap.png)")
+    parser.add_argument("--heatmap-png", type=str, default="analysis/results/trajectory_heatmap.png",
+                       help="Ścieżka do heatmapy (domyślnie: analysis/results/trajectory_heatmap.png)")
     parser.add_argument("--single-vehicle", action="store_true",
                        help="Rysuj trajektorię pierwszego pojazdu zamiast heatmapy całej drogi")
     parser.add_argument("--no-plot", action="store_true",

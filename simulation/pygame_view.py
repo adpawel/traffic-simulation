@@ -379,7 +379,7 @@ class PygameView:
 
 def main() -> None:
     """Funkcja pomocnicza do szybkiego uruchomienia wizualizacji."""
-    from src.config import L, LANES, DENSITY, P_SLOW, P_CHANGE, GAP_REAR
+    from simulation.config import L, LANES, DENSITY, P_SLOW, P_CHANGE, GAP_REAR
     
     sim = Simulation(
         length=L,
