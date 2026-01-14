@@ -5,10 +5,11 @@ Uruchamia symulację dla różnych gęstości i zbiera statystyki przepływu.
 """
 
 import sys
+import os
 import random
 from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).parent / "src"))
+sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from simulation.simulation import Simulation
 import numpy as np
@@ -137,6 +138,7 @@ def plot_fundamental_diagram(densities, flows, title="", save_path=None):
     ax.xaxis.set_minor_locator(ticker.MultipleLocator(0.05))
     
     if save_path:
+        os.makedirs(os.path.dirname(save_path) or '.', exist_ok=True)
         plt.savefig(save_path, dpi=150, bbox_inches='tight')
         print(f"\nWykres zapisany: {save_path}")
     
@@ -171,10 +173,10 @@ if __name__ == "__main__":
                        help="Długość drogi (domyślnie: 133)")
     parser.add_argument("--seed", type=int, default=42,
                        help="Seed losowości (domyślnie: 42)")
-    parser.add_argument("--csv", type=str, default="fundamental_diagram.csv",
-                       help="Ścieżka do zapisania CSV (domyślnie: fundamental_diagram.csv)")
-    parser.add_argument("--png", type=str, default="fundamental_diagram.png",
-                       help="Ścieżka do zapisania PNG (domyślnie: fundamental_diagram.png)")
+    parser.add_argument("--csv", type=str, default="analysis/results/fundamental_diagram.csv",
+                       help="Ścieżka do zapisania CSV (domyślnie: analysis/results/fundamental_diagram.csv)")
+    parser.add_argument("--png", type=str, default="analysis/results/fundamental_diagram.png",
+                       help="Ścieżka do zapisania PNG (domyślnie: analysis/results/fundamental_diagram.png)")
     parser.add_argument("--no-plot", action="store_true",
                        help="Nie wyświetlaj wykresu (tylko zapisz do pliku)")
     
@@ -231,5 +233,6 @@ if __name__ == "__main__":
             plt.xlim(0, 1.05)
             max_flow = max(flows_clean) if flows_clean else 1
             plt.ylim(0, max_flow * 1.1)
+            os.makedirs(os.path.dirname(args.png) or '.', exist_ok=True)
             plt.savefig(args.png, dpi=150, bbox_inches='tight')
             print(f"Wykres zapisany: {args.png}")

@@ -2,6 +2,7 @@
 """Scenariusze demonstracyjne modelu NaSch."""
 
 import sys
+import os
 import random
 import numpy as np
 import matplotlib.pyplot as plt
@@ -9,7 +10,7 @@ from pathlib import Path
 from dataclasses import dataclass
 from typing import List, Optional, Tuple
 
-sys.path.insert(0, str(Path(__file__).parent))
+sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from simulation.simulation import Simulation
 from simulation.speedLimits import SpeedLimit, SpeedLimits, Position
@@ -19,7 +20,7 @@ from simulation.pygame_view import PygameView
 CALIBRATED = {
     'p_slow': 0.25,
     'p_change': 0.525,
-    'gap_rear': 1,
+    'gap_rear': 2,
     'reaction_delay': 1
 }
 
@@ -62,7 +63,7 @@ def collect_flow_data(sim: Simulation, steps: int) -> List[int]:
     return flows
 
 
-def scenario_shockwave(save_path: str = "scenario_shockwave.png"):
+def scenario_shockwave(save_path: str = "analysis/results/scenario_shockwave.png"):
     """Fala uderzeniowa - propagacja korka wstecz po usunięciu przeszkody."""
     print("=" * 60)
     print("SCENARIUSZ: Fala uderzeniowa (Shockwave)")
@@ -149,12 +150,13 @@ def scenario_shockwave(save_path: str = "scenario_shockwave.png"):
     
     plt.suptitle('Scenariusz 1: Fala uderzeniowa (Shockwave)', fontsize=14, fontweight='bold', y=0.98)
     plt.tight_layout()
+    os.makedirs(os.path.dirname(save_path) or '.', exist_ok=True)
     plt.savefig(save_path, dpi=150, bbox_inches='tight')
     print(f"\nZapisano: {save_path}")
     plt.show()
 
 
-def scenario_light_timing(save_path: str = "scenario_lights.png"):
+def scenario_light_timing(save_path: str = "analysis/results/scenario_lights.png"):
     """Wpływ czasu cyklu świateł na powstawanie korków przy różnych gęstościach."""
     print("=" * 60)
     print("SCENARIUSZ: Światła - krótki vs długi cykl")
@@ -296,6 +298,7 @@ def scenario_light_timing(save_path: str = "scenario_lights.png"):
     plt.suptitle('Scenariusz 2: Wpływ czasu cyklu świateł na ruch przy różnych gęstościach', 
                  fontsize=14, fontweight='bold', y=0.995)
     plt.tight_layout()
+    os.makedirs(os.path.dirname(save_path) or '.', exist_ok=True)
     plt.savefig(save_path, dpi=150, bbox_inches='tight')
     print(f"\nZapisano: {save_path}")
     plt.show()
@@ -305,7 +308,7 @@ def scenario_light_timing(save_path: str = "scenario_lights.png"):
     print(f"  Wysoki ruch: zmiana cyklu daje {diff_high:+.1f}% przepływu")
 
 
-def scenario_accident(save_path: str = "scenario_accident.png"):
+def scenario_accident(save_path: str = "analysis/results/scenario_accident.png"):
     """Symulacja wypadku - blokada środkowego pasa."""
     print("=" * 60)
     print("SCENARIUSZ: Wypadek na autostradzie")
@@ -420,12 +423,13 @@ def scenario_accident(save_path: str = "scenario_accident.png"):
     plt.suptitle('Scenariusz 3: Wypadek na autostradzie (blokada środkowego pasa)', 
                  fontsize=14, fontweight='bold', y=0.995)
     plt.tight_layout()
+    os.makedirs(os.path.dirname(save_path) or '.', exist_ok=True)
     plt.savefig(save_path, dpi=150, bbox_inches='tight')
     print(f"\nZapisano: {save_path}")
     plt.show()
 
 
-def scenario_driver_behavior(save_path: str = "scenario_drivers.png"):
+def scenario_driver_behavior(save_path: str = "analysis/results/scenario_drivers.png"):
     """Porównanie agresywnych vs spokojnych kierowców (różne p_slow)."""
     print("=" * 60)
     print("SCENARIUSZ: Agresywny vs spokojny kierowca")
@@ -547,12 +551,13 @@ def scenario_driver_behavior(save_path: str = "scenario_drivers.png"):
     plt.suptitle('Scenariusz 4: Wpływ stylu jazdy na przepływ (p_slow)', 
                  fontsize=14, fontweight='bold', y=0.995)
     plt.tight_layout(rect=[0, 0, 0.98, 1])
+    os.makedirs(os.path.dirname(save_path) or '.', exist_ok=True)
     plt.savefig(save_path, dpi=150, bbox_inches='tight')
     print(f"\nZapisano: {save_path}")
     plt.show()
 
 
-def scenario_speed_limit(save_path: str = "scenario_speedlimit.png"):
+def scenario_speed_limit(save_path: str = "analysis/results/scenario_speedlimit.png"):
     """Wpływ strefy ograniczenia prędkości na przepływ."""
     print("=" * 60)
     print("SCENARIUSZ: Strefa ograniczenia prędkości")
@@ -649,6 +654,7 @@ def scenario_speed_limit(save_path: str = "scenario_speedlimit.png"):
     plt.suptitle('Scenariusz 5: Wpływ ograniczenia prędkości na przepływ', 
                  fontsize=14, fontweight='bold', y=0.98)
     plt.tight_layout()
+    os.makedirs(os.path.dirname(save_path) or '.', exist_ok=True)
     plt.savefig(save_path, dpi=150, bbox_inches='tight')
     print(f"\nZapisano: {save_path}")
     plt.show()

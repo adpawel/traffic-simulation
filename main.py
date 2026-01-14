@@ -10,11 +10,11 @@ import random
 from pathlib import Path
 
 # Dodaj src do ścieżki
-sys.path.insert(0, str(Path(__file__).parent / "src"))
+
 
 from simulation.simulation import Simulation
 from simulation.pygame_view import PygameView
-from src.config import L, LANES, DENSITY, P_SLOW, P_CHANGE, GAP_REAR
+from simulation.config import L, LANES, DENSITY, P_SLOW, P_CHANGE, GAP_REAR
 
 
 def parse_args():

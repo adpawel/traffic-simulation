@@ -4,7 +4,7 @@ import random
 from dataclasses import dataclass
 from typing import List, Optional, Dict, Tuple
 
-from src.config import (
+from .config import (
     P_CHANGE,
     GAP_REAR,
     P_SLOW,
