@@ -437,7 +437,7 @@ def scenario_driver_behavior(save_path: str = "analysis/results/scenario_drivers
     
     length = 200
     lanes = 2
-    density = 0.25
+    density = 0.15
     steps = 600
     
     configs = {

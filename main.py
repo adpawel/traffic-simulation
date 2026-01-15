@@ -9,7 +9,7 @@ import sys
 import random
 from pathlib import Path
 
-# Dodaj src do ścieżki
+# Dodanie src do ścieżki
 
 
 from simulation.simulation import Simulation
@@ -18,7 +18,7 @@ from simulation.config import L, LANES, DENSITY, P_SLOW, P_CHANGE, GAP_REAR
 
 
 def parse_args():
-    """Parsowanie argumentów linii poleceń."""
+    """Parsuje argumenty linii poleceń."""
     parser = argparse.ArgumentParser(
         description="Symulacja ruchu drogowego - model NaSch z wieloma pasami"
     )
@@ -117,7 +117,7 @@ def parse_args():
     parser.add_argument(
         "--no-gui",
         action="store_true",
-        help="Uruchom symulację bez wizualizacji (tylko konsola)"
+        help="Uruchamia symulację bez wizualizacji (tylko konsola)"
     )
     parser.add_argument(
         "--steps",
@@ -130,7 +130,7 @@ def parse_args():
 
 
 def run_simulation_no_gui(sim: Simulation, steps: int) -> None:
-    """Uruchom symulację bez GUI - tylko statystyki w konsoli."""
+    """Uruchamia symulację bez GUI - tylko statystyki w konsoli."""
     print(f"Uruchamiam symulację na {steps} kroków...")
     print(f"Parametry:")
     print(f"  - Długość: {sim.length} komórek")
@@ -271,13 +271,13 @@ def main():
         print("Błąd: p_change musi być w zakresie [0.0, 1.0]")
         sys.exit(1)
     
-    # Parsuj światła, przeszkody i lokalne ograniczenia prędkości
+    # Parsowanie świateł, przeszkód i lokalnych ograniczeń prędkości
     speed_limits = []
     speed_limits.extend(parse_traffic_lights(args.traffic_lights, args.length))
     speed_limits.extend(parse_obstacles(args.obstacles, args.length))
     speed_limits.extend(parse_speed_limits(args.speed_limits, args.length))
     
-    # Ustaw seed losowości jeśli podano
+    # Ustawienie seeda losowości jeśli podano
     if args.seed is not None:
         random.seed(args.seed)
     
